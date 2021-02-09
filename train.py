@@ -210,7 +210,6 @@ N_o, 4, where N_o is the number of objects present in that particular image.
           #Prints to test
           #print(j)
           box_id_diff = [b for b in labels[j][0]]  
-          
           box = [l[0:4] for l in box_id_diff]
 
           #print('before:',box) #To check
@@ -224,7 +223,7 @@ N_o, 4, where N_o is the number of objects present in that particular image.
               
           #print('after:',box) #To check
           
-          box_tensor = torch.FloatTensor(box)
+          box_tensor = torch.FloatTensor(box).to(device)
 
           #Done with the parameter in AVD method
           """ 
@@ -251,7 +250,7 @@ N_o, 4, where N_o is the number of objects present in that particular image.
             box_list.append(box_tensor)               
 
           label = [l[5] for l in box_id_diff]
-          label_tensor = torch.tensor(label)
+          label_tensor = torch.tensor(label).to(device)
           if j == 0: 
             label_list = [label_tensor]
           else:
