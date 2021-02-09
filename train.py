@@ -17,11 +17,12 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Learning parameters
 checkpoint = None  # path to model checkpoint, None if none
-batch_size = 8  # batch size
+batch_size = 32  # batch size
 iterations = 120000  # number of iterations to train
 workers = 4  # number of workers for loading data in the DataLoader
-print_freq = 30  # print training status every __ batches
-lr = 1e-3  # learning rate
+print_freq = 1  # print training status every __ batches
+#lr = 1e-3  # learning rate
+lr = 5e-3  # learning rate CHANGED
 decay_lr_at = [80000, 100000]  # decay learning rate after these many iterations
 decay_lr_to = 0.1  # decay learning rate to this fraction of the existing learning rate
 momentum = 0.9  # momentum
@@ -67,17 +68,36 @@ def main():
     #import active_vision_dataset_processing.data_loading
     import transforms, active_vision_dataset
 
-    #only inlcude labels for instances with id in range(5)
-    pick_trans = transforms.PickInstances(range(5), max_difficulty=5)
+    #Include all instances
+    pick_trans = transforms.PickInstances(range(34))
 
     TRAIN_PATH = "./google_drive/MyDrive/ColabNotebooks/Project/trainDataset"
+    """
     train_dataset = active_vision_dataset.AVD(root=TRAIN_PATH, train=True,
                                         target_transform=pick_trans,
-                                        scene_list=['Home_005_1', 'Home_006_1']
+                                        scene_list=['Home_001_1','Home_002_1', 'Home_003_1',
+                                        'Home_004_1','Home_005_1', 'Home_006_1',
+                                         'Home_008_1', 'Home_010_1',
+                                        'Home_011_1','Home_014_1', 'Office_001_1']
                                         )
+    """
+    train_dataset = active_vision_dataset.AVD(root=TRAIN_PATH, train=True,
+                                        target_transform=pick_trans,
+                                        scene_list=['Home_001_1',                                                    
+                                                    'Home_002_1',
+                                                    'Home_003_1',                                                    
+                                                    'Home_004_1',
+                                                    'Home_005_1',
+                                                    'Home_006_1',
+                                                    'Home_008_1',
+                                                    'Home_014_1',
+                                                    'Home_011_1',
+                                                    'Home_010_1'],
+                                          fraction_of_no_box=-1)
+      
 
     train_loader = torch.utils.data.DataLoader(train_dataset,
-                              batch_size=12,
+                              batch_size=batch_size,
                               shuffle=True,
                               collate_fn=active_vision_dataset.collate
                               )
@@ -132,28 +152,18 @@ def train(train_loader, model, criterion, optimizer, epoch):
 
     start = time.time()
 
-    CATEGORY_NAMES = ['background','advil_liqui_gels','aunt_jemima_original_syrup',
-    'bumblebee_albacore','cholula_chipotle_hot_sauce','coca_cola_glass_bottle',
-    'crest_complete_minty_fresh','crystal_hot_sauce','expo_marker_red','hersheys_bar',
-    'honey_bunches_of_oats_honey_roasted','honey_bunches_of_oats_with_almonds','hunts_sauce',
-    'listerine_green','mahatma_rice','nature_valley_granola_thins_dark_chocolate',
-    'nutrigrain_harvest_blueberry_bliss','pepto_bismol','pringles_bbq',
-    'progresso_new_england_clam_chowder','quaker_chewy_low_fat_chocolate_chunk',
-    'red_bull','softsoap_clear','softsoap_gold','softsoap_white','spongebob_squarepants_fruit_snaks',
-    'tapatio_hot_sauce','vo5_tea_therapy_healthful_green_tea_smoothing_shampoo',
-    'nature_valley_sweet_and_salty_nut_almond','nature_valley_sweet_and_salty_nut_cashew',
-    'nature_valley_sweet_and_salty_nut_peanut','nature_valley_sweet_and_salty_nut_roasted_mix_nut',
-    'paper_plate','red_cup']
     import numpy as np
     # Batches
     for i, (images, labels) in enumerate(train_loader):
+
+        #CHECK / REMOVE THIS CODE!
         data_time.update(time.time() - start)
         #print(len(images))
         #print(labels)
         # Move to default device
         data = images
         a = np.asarray(data)
-        print(a.shape)
+        #print(a.shape)
         #a = np.squeeze(a, axis=1) # shape should now be (L, 224, 224, 3)
         
 
@@ -167,12 +177,12 @@ def train(train_loader, model, criterion, optimizer, epoch):
                       transf.ToPILImage(),
                       transf.Resize(300),
                       transf.CenterCrop(300),
-                      transf.ToTensor(),
+                      transf.ToTensor(),                      
                       transf.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                   ])
-                  
-        #print(input_batch)
-        for j in range(12):   
+        
+        for j in range(batch_size):   
+          
           if j == 0:   
             input_tensor = preprocess(images[j])
             input_tensor = input_tensor.unsqueeze(0)
@@ -183,28 +193,117 @@ def train(train_loader, model, criterion, optimizer, epoch):
             input_tensor = input_tensor.unsqueeze(0) # create a mini-batch as expected by the model
             #print(input_tensor.shape)
             input_batch = torch.cat((input_batch, input_tensor), 0)
-            #print(input_batch.shape) 
+            #print("shape images: ",input_batch.shape) 
 
-          print(j)
-          print(labels[j][0])         
-          print(labels[j][0][4])
+             
          
-          """
-          boxes = [b.to(device) for b in torch.tensor(labels[j][0])]
+          # In the Active Vision Dataset we have this formatting:
+          # [xmin ymin xmax ymax instance_id difficulty]
+           
+          """          From the Tutorial:           
+Since the number of objects in any given image can vary, we can't use a fixed 
+size tensor for storing the bounding boxes for the entire batch of N images.
+Therefore, ground truth bounding boxes fed to the model must be a list of 
+length N, where each element of the list is a Float tensor of dimensions
+N_o, 4, where N_o is the number of objects present in that particular image.
+        """
+          #Prints to test
+          #print(j)
+          box_id_diff = [b for b in labels[j][0]]  
+          
+          box = [l[0:4] for l in box_id_diff]
 
+          #print('before:',box) #To check
+
+          #Boundary coordinates as requested
+          for k in range(len(box)):           
+            box[k][0] = box[k][0]/1080.0
+            box[k][2] = box[k][2]/1080.0          
+            box[k][1] = box[k][1]/1920.0
+            box[k][3] = box[k][3]/1920.0
+              
+          #print('after:',box) #To check
+          
+          box_tensor = torch.FloatTensor(box)
+
+          #Done with the parameter in AVD method
+          """ 
+          #Check if there are objects in the images
+          if j == 0: 
+            start = True
+            
+          if len(box_tensor) > 0:
+            if start == True:
+              box_list = box_tensor
+              start = False
+            elif start == False:
+              box_list = [box_list, box_tensor]            
+              #box_list = torch.cat((box_list,box_tensor),0)            
+          else:
+            start = True
+          """
+          
+          #print(box_tensor) #To check
+
+          if j == 0:            
+            box_list = [box_tensor]
+          else:
+            box_list.append(box_tensor)               
+
+          label = [l[5] for l in box_id_diff]
+          label_tensor = torch.tensor(label)
+          if j == 0: 
+            label_list = [label_tensor]
+          else:
+            label_list.append(label_tensor)        
+
+
+          #CHECK / REMOVE THIS CODE
+
+          #if box_tensor.numel() == 0: Shuld i remove the images without objects?
+        
+          
+          #print(box_id_diff[0][0:4])
+          
+          """
+          if  len(box_id_diff.size())-1 != 0:
+            if j == 0:   
+              box = box_id_diff[0][0:4]
+              print("asad:",box)
+              #box = box.unsqueeze(0)
+              boxes = box
+            else:
+              box = [l[0:4] for l in box_id_diff]
+
+              #box = box.unsqueeze(0) # create a mini-batch as expected by the model
+              #print(input_tensor.shape)
+              boxes = torch.cat((boxes, box), 0)
+            print("boxes:", boxes)
+            """
+          #box = torch.split(box_id_diff, 2)
+          #print(box)
+          """
           if not labels[j][0]:
             labels = []        
             print("coasc")  
           else:              
             labels = [l.to(device) for l in torch.tensor(labels[j][0][4])]
           """
+        
+        #print("list of boxes:",box_list)
+        #print("list of labels:", label_list)
+
         images = input_batch.to(device)  # (batch_size (N), 3, 300, 300)
         #print(images.shape)
-     
-        """print(boxes)
-        print(labels)"""
-        # Forward prop.
+        boxes = box_list
+        labels = label_list
+
+        # Forward prop.        
         predicted_locs, predicted_scores = model(images)  # (N, 8732, 4), (N, 8732, n_classes)
+
+        #Prints to check the dimensions
+        #print(predicted_locs.shape)    #correct    
+        #print(predicted_scores.shape)  #correct  
 
         # Loss
         loss = criterion(predicted_locs, predicted_scores, boxes, labels)  # scalar
