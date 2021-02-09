@@ -8,8 +8,19 @@ import torchvision.transforms.functional as FT
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Label map
-voc_labels = ('aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow', 'diningtable',
-              'dog', 'horse', 'motorbike', 'person', 'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor')
+voc_labels = ['background','advil_liqui_gels','aunt_jemima_original_syrup',
+    'bumblebee_albacore','cholula_chipotle_hot_sauce','coca_cola_glass_bottle',
+    'crest_complete_minty_fresh','crystal_hot_sauce','expo_marker_red','hersheys_bar',
+    'honey_bunches_of_oats_honey_roasted','honey_bunches_of_oats_with_almonds','hunts_sauce',
+    'listerine_green','mahatma_rice','nature_valley_granola_thins_dark_chocolate',
+    'nutrigrain_harvest_blueberry_bliss','pepto_bismol','pringles_bbq',
+    'progresso_new_england_clam_chowder','quaker_chewy_low_fat_chocolate_chunk',
+    'red_bull','softsoap_clear','softsoap_gold','softsoap_white','spongebob_squarepants_fruit_snaks',
+    'tapatio_hot_sauce','vo5_tea_therapy_healthful_green_tea_smoothing_shampoo',
+    'nature_valley_sweet_and_salty_nut_almond','nature_valley_sweet_and_salty_nut_cashew',
+    'nature_valley_sweet_and_salty_nut_peanut','nature_valley_sweet_and_salty_nut_roasted_mix_nut',
+    'paper_plate','red_cup']
+
 label_map = {k: v + 1 for v, k in enumerate(voc_labels)}
 label_map['background'] = 0
 rev_label_map = {v: k for k, v in label_map.items()}  # Inverse mapping
@@ -17,7 +28,8 @@ rev_label_map = {v: k for k, v in label_map.items()}  # Inverse mapping
 # Color map for bounding boxes of detected objects from https://sashat.me/2017/01/11/list-of-20-simple-distinct-colors/
 distinct_colors = ['#e6194b', '#3cb44b', '#ffe119', '#0082c8', '#f58231', '#911eb4', '#46f0f0', '#f032e6',
                    '#d2f53c', '#fabebe', '#008080', '#000080', '#aa6e28', '#fffac8', '#800000', '#aaffc3', '#808000',
-                   '#ffd8b1', '#e6beff', '#808080', '#FFFFFF']
+                   '#ffd8b1', '#e6beff', '#808080', '#3e3c70', '#c33989', '#fc882d', '#53c5cb', '#9ae8dd', '#9c35a4',
+                   '#65e9c9', '#fd173f', '#3def2e', '#4ff3bd', '#7886a3', '#a3eda1', '#2e1462', '#FFFFFF']
 label_color_map = {k: distinct_colors[i] for i, k in enumerate(label_map.keys())}
 
 
@@ -344,6 +356,9 @@ def find_intersection(set_1, set_2):
     :param set_2: set 2, a tensor of dimensions (n2, 4)
     :return: intersection of each of the boxes in set 1 with respect to each of the boxes in set 2, a tensor of dimensions (n1, n2)
     """
+    #Prints to test
+    #print('1: ',set_1.shape)    
+    #print('2: ',set_2.shape)
 
     # PyTorch auto-broadcasts singleton dimensions
     lower_bounds = torch.max(set_1[:, :2].unsqueeze(1), set_2[:, :2].unsqueeze(0))  # (n1, n2, 2)
