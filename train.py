@@ -7,7 +7,7 @@ from datasets import PascalVOCDataset
 from utils import *
 
 # Data parameters
-data_folder = 'google_drive/MyDrive/ColabNotebooks/Project/trainDataset' # folder with data files
+data_folder = 'google_drive/MyDrive/ColabNotebooks/Project/GT' # folder with data files
 keep_difficult = True  # use objects considered difficult to detect?
 
 # Model parameters
@@ -17,12 +17,11 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Learning parameters
 checkpoint = None  # path to model checkpoint, None if none
-batch_size = 32  # batch size
+batch_size = 8  # batch size
 iterations = 120000  # number of iterations to train
 workers = 4  # number of workers for loading data in the DataLoader
-print_freq = 1  # print training status every __ batches
-#lr = 1e-3  # learning rate
-lr = 5e-3  # learning rate CHANGED
+print_freq = 5  # print training status every __ batches
+lr = 1e-3  # learning rate
 decay_lr_at = [80000, 100000]  # decay learning rate after these many iterations
 decay_lr_to = 0.1  # decay learning rate to this fraction of the existing learning rate
 momentum = 0.9  # momentum
@@ -72,15 +71,8 @@ def main():
     pick_trans = transforms.PickInstances(range(34))
 
     TRAIN_PATH = "./google_drive/MyDrive/ColabNotebooks/Project/trainDataset"
-    """
-    train_dataset = active_vision_dataset.AVD(root=TRAIN_PATH, train=True,
-                                        target_transform=pick_trans,
-                                        scene_list=['Home_001_1','Home_002_1', 'Home_003_1',
-                                        'Home_004_1','Home_005_1', 'Home_006_1',
-                                         'Home_008_1', 'Home_010_1',
-                                        'Home_011_1','Home_014_1', 'Office_001_1']
-                                        )
-    """
+
+    
     train_dataset = active_vision_dataset.AVD(root=TRAIN_PATH, train=True,
                                         target_transform=pick_trans,
                                         scene_list=['Home_001_1',                                                    
@@ -89,10 +81,12 @@ def main():
                                                     'Home_004_1',
                                                     'Home_005_1',
                                                     'Home_006_1',
+                                                    'Home_007_1',
                                                     'Home_008_1',
                                                     'Home_014_1',
                                                     'Home_011_1',
-                                                    'Home_010_1'],
+                                                    'Home_010_1',
+                                                    'Office_001_1'],
                                           fraction_of_no_box=-1)
       
 
@@ -102,6 +96,8 @@ def main():
                               collate_fn=active_vision_dataset.collate
                               )
     """
+    #I TRY TO USE THE DEFAULT DATASET LOADER::::::::::::::
+
     # Custom dataloaders
     train_dataset = PascalVOCDataset(data_folder,
                                      split='train',
@@ -109,7 +105,8 @@ def main():
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
                                                collate_fn=train_dataset.collate_fn, num_workers=workers,
                                                pin_memory=True)  # note that we're passing the collate function here
-    """
+   """
+
     # Calculate total number of epochs to train and the epochs to decay learning rate at (i.e. convert iterations to epochs)
     # To convert iterations to epochs, divide iterations by the number of iterations per epoch
     # The paper trains for 120,000 iterations with a batch size of 32, decays after 80,000 and 100,000 iterations
@@ -203,9 +200,14 @@ def train(train_loader, model, criterion, optimizer, epoch):
           """          From the Tutorial:           
 Since the number of objects in any given image can vary, we can't use a fixed 
 size tensor for storing the bounding boxes for the entire batch of N images.
+
 Therefore, ground truth bounding boxes fed to the model must be a list of 
 length N, where each element of the list is a Float tensor of dimensions
 N_o, 4, where N_o is the number of objects present in that particular image.
+
+Therefore, ground truth labels fed to the model must be a list of length N, 
+where each element of the list is a Long tensor of dimensions N_o, where N_o 
+is the number of objects present in that particular image.
         """
           #Prints to test
           #print(j)
@@ -216,10 +218,10 @@ N_o, 4, where N_o is the number of objects present in that particular image.
 
           #Boundary coordinates as requested
           for k in range(len(box)):           
-            box[k][0] = box[k][0]/1080.0
-            box[k][2] = box[k][2]/1080.0          
-            box[k][1] = box[k][1]/1920.0
-            box[k][3] = box[k][3]/1920.0
+            box[k][0] = box[k][0]/1920.0
+            box[k][2] = box[k][2]/1920.0          
+            box[k][1] = box[k][1]/1080.0
+            box[k][3] = box[k][3]/1080.0
               
           #print('after:',box) #To check
           
@@ -250,17 +252,12 @@ N_o, 4, where N_o is the number of objects present in that particular image.
             box_list.append(box_tensor)               
 
           label = [l[5] for l in box_id_diff]
-          label_tensor = torch.tensor(label).to(device)
+          label_tensor = torch.LongTensor(label).to(device)
           if j == 0: 
             label_list = [label_tensor]
           else:
             label_list.append(label_tensor)        
 
-
-          #CHECK / REMOVE THIS CODE
-
-          #if box_tensor.numel() == 0: Shuld i remove the images without objects?
-        
           
           #print(box_id_diff[0][0:4])
           
@@ -324,13 +321,17 @@ N_o, 4, where N_o is the number of objects present in that particular image.
         start = time.time()
 
         # Print status
-        if i % print_freq == 0:
+        if i % print_freq == 0:          
+            print('Epoch: [{0}][{1}/{2}]\t'                  
+                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'.format(epoch, i, len(train_loader), loss=losses))
+            """
             print('Epoch: [{0}][{1}/{2}]\t'
                   'Batch Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   'Data Time {data_time.val:.3f} ({data_time.avg:.3f})\t'
                   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'.format(epoch, i, len(train_loader),
                                                                   batch_time=batch_time,
                                                                   data_time=data_time, loss=losses))
+            """                                                        
     del predicted_locs, predicted_scores, images, boxes, labels  # free some memory since their histories may be stored
 
 
