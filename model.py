@@ -614,8 +614,9 @@ class MultiBoxLoss(nn.Module):
               true_locs[i] = cxcy_to_gcxgcy(xy_to_cxcy(boxes[i][object_for_each_prior]), self.priors_cxcy)  # (8732, 4)
             else:
               numEmptyImages = numEmptyImages + 1
-              
-        print("Found",numEmptyImages,'images without objects in this BATCH')
+
+        #Print to check empty images     
+        #print("Found",numEmptyImages,'images without objects in this BATCH')
         # Identify priors that are positive (object/non-background)
         positive_priors = true_classes != 0  # (N, 8732)
         
