@@ -21,7 +21,7 @@ batch_size = 8  # batch size
 iterations = 120000  # number of iterations to train
 workers = 4  # number of workers for loading data in the DataLoader
 print_freq = 5  # print training status every __ batches
-lr = 1e-3  # learning rate
+lr = 5e-4  # learning rate
 decay_lr_at = [80000, 100000]  # decay learning rate after these many iterations
 decay_lr_to = 0.1  # decay learning rate to this fraction of the existing learning rate
 momentum = 0.9  # momentum
@@ -217,12 +217,12 @@ is the number of objects present in that particular image.
           #print('before:',box) #To check
 
           #Boundary coordinates as requested
-          for k in range(len(box)):           
+          for k in range(len(box)):  
             box[k][0] = box[k][0]/1920.0
             box[k][2] = box[k][2]/1920.0          
             box[k][1] = box[k][1]/1080.0
-            box[k][3] = box[k][3]/1080.0
-              
+            box[k][3] = box[k][3]/1080.0 
+
           #print('after:',box) #To check
           
           box_tensor = torch.FloatTensor(box).to(device)
