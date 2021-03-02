@@ -16,8 +16,8 @@ n_classes = len(label_map)  # number of different types of objects
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Learning parameters
-checkpoint = None  # path to model checkpoint, None if none
-batch_size = 8  # batch size
+checkpoint = "checkpoint_ssd300.pth.tar"  # path to model checkpoint, None if none
+batch_size = 9  # batch size
 iterations = 120000  # number of iterations to train
 workers = 4  # number of workers for loading data in the DataLoader
 print_freq = 5  # print training status every __ batches
@@ -132,6 +132,8 @@ def main():
 
 
 def train(train_loader, model, criterion, optimizer, epoch):
+    
+    
     """
     One epoch's training.
 
@@ -320,6 +322,7 @@ is the number of objects present in that particular image.
 
         start = time.time()
 
+        
         # Print status
         if i % print_freq == 0:          
             print('Epoch: [{0}][{1}/{2}]\t'                  
