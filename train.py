@@ -16,7 +16,7 @@ n_classes = len(label_map)  # number of different types of objects
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Learning parameters
-checkpoint = "checkpoint_ssd300.pth.tar"  # path to model checkpoint, None if none
+checkpoint = "google_drive/MyDrive/ColabNotebooks/Project/checkpoint_ssd300.pth_15.tar"  # path to model checkpoint, None if none
 batch_size = 9  # batch size
 iterations = 120000  # number of iterations to train
 workers = 4  # number of workers for loading data in the DataLoader
@@ -115,7 +115,8 @@ def main():
 
     # Epochs
     for epoch in range(start_epoch, epochs):
-
+        save_checkpoint(epoch, model, optimizer)
+        
         # Decay learning rate at particular epochs
         if epoch in decay_lr_at:
             adjust_learning_rate(optimizer, decay_lr_to)
@@ -129,6 +130,7 @@ def main():
 
         # Save checkpoint
         save_checkpoint(epoch, model, optimizer)
+      
 
 
 def train(train_loader, model, criterion, optimizer, epoch):
