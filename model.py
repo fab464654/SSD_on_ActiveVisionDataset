@@ -552,7 +552,7 @@ class MultiBoxLoss(nn.Module):
         import csv
 
         #Writing mode
-        with open('trainingLog.csv', mode='w') as trainingLog:
+        with open('google_drive/MyDrive/checkpointsIeri/trainingLog.csv', mode='w') as trainingLog:
             log_writer = csv.writer(trainingLog, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             log_writer.writerow(['loc_loss', 'conf_loss'])
             #log_writer.writerow(['Epoch', 'Iteration', 'loc_loss', 'conf_loss'])
@@ -674,7 +674,7 @@ class MultiBoxLoss(nn.Module):
 
         #Append mode to update the csv file of the losses
         import csv
-        with open('trainingLog.csv', mode='a') as trainingLog:
+        with open('google_drive/MyDrive/checkpointsIeri/trainingLog.csv', mode='a') as trainingLog:
             log_writer = csv.writer(trainingLog, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL) 
             log_writer.writerow([loc_loss.item(),conf_loss.item()])
 
