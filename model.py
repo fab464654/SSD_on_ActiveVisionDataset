@@ -535,6 +535,7 @@ class MultiBoxLoss(nn.Module):
     (1) a localization loss for the predicted locations of the boxes, and
     (2) a confidence loss for the predicted class scores.
     """
+    
 
     def __init__(self, priors_cxcy, threshold=0.5, neg_pos_ratio=3, alpha=1.):
         super(MultiBoxLoss, self).__init__()
@@ -547,6 +548,16 @@ class MultiBoxLoss(nn.Module):
         self.smooth_l1 = nn.L1Loss()
         self.cross_entropy = nn.CrossEntropyLoss(reduce=False)
 
+        #LOGGING OF THE LOSS VALUES
+        import csv
+
+        #Writing mode
+        with open('trainingLog.csv', mode='w') as trainingLog:
+            log_writer = csv.writer(trainingLog, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            log_writer.writerow(['loc_loss', 'conf_loss'])
+            #log_writer.writerow(['Epoch', 'Iteration', 'loc_loss', 'conf_loss'])
+
+
     def forward(self, predicted_locs, predicted_scores, boxes, labels):
         """
         Forward propagation.
@@ -558,6 +569,7 @@ class MultiBoxLoss(nn.Module):
         :return: multibox loss, a scalar
         """
         
+
         
         batch_size = predicted_locs.size(0)
         n_priors = self.priors_cxcy.size(0)
@@ -659,8 +671,15 @@ class MultiBoxLoss(nn.Module):
         # As in the paper, averaged over positive priors only, although computed over both positive and hard-negative priors
         conf_loss = (conf_loss_hard_neg.sum() + conf_loss_pos.sum()) / n_positives.sum().float()  # (), scalar
 
-        
-        print("loc_loss: ",loc_loss, "conf_loss: ",conf_loss)
+
+        #Append mode to update the csv file of the losses
+        import csv
+        with open('trainingLog.csv', mode='a') as trainingLog:
+            log_writer = csv.writer(trainingLog, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL) 
+            log_writer.writerow([loc_loss.item(),conf_loss.item()])
+
+        #Print of the loss tensors
+        #print("loc_loss: ",loc_loss, "conf_loss: ",conf_loss)
         # TOTAL LOSS
 
         return conf_loss + self.alpha * loc_loss
