@@ -8,7 +8,7 @@ import torchvision.transforms.functional as FT
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Label map
-voc_labels = ['background','advil_liqui_gels','aunt_jemima_original_syrup',
+voc_labels = ['advil_liqui_gels','aunt_jemima_original_syrup',
     'bumblebee_albacore','cholula_chipotle_hot_sauce','coca_cola_glass_bottle',
     'crest_complete_minty_fresh','crystal_hot_sauce','expo_marker_red','hersheys_bar',
     'honey_bunches_of_oats_honey_roasted','honey_bunches_of_oats_with_almonds','hunts_sauce',
