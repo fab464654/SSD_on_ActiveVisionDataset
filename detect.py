@@ -5,7 +5,7 @@ from PIL import Image, ImageDraw, ImageFont
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Load model checkpoint
-checkpoint = "google_drive/MyDrive/ColabNotebooks/Project/_provaSSD/checkpoint_ssd300.pth.tar"
+checkpoint = "google_drive/MyDrive/checkpointsIeri/checkpoint_ssd300.pth.tar"
 
 checkpoint = torch.load(checkpoint)
 start_epoch = checkpoint['epoch'] + 1
@@ -99,7 +99,7 @@ import matplotlib.pyplot as plt
 
 
 if __name__ == '__main__':
-    img_path = 'a-PyTorch-Tutorial-to-Object-Detection/img/000279.jpg'
+    img_path = "google_drive/MyDrive/ColabNotebooks/Project/testDataset/Home_001_2/jpg_rgb/000120000110101.jpg"
     original_image = Image.open(img_path, mode='r')    
     original_image = original_image.convert('RGB')    
     annotated_image = detect(original_image, min_score=0.2, max_overlap=0.5, top_k=200)
