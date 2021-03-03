@@ -12,7 +12,7 @@ batch_size = 64
 workers = 4
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-checkpoint = "google_drive/MyDrive/ColabNotebooks/Project/_provaSSD/checkpoint_ssd300.pth.tar"
+checkpoint = "google_drive/MyDrive/checkpointsIeri/checkpoint_ssd300.pth.tar"
 data_folder = 'google_drive/MyDrive/ColabNotebooks/Project/_provaSSD/test'
 
 # Load model checkpoint that is to be evaluated
@@ -24,12 +24,42 @@ model = model.to(device)
 model.eval()
 
 # Load test data
+"""
 test_dataset = PascalVOCDataset(data_folder,
                                 split='test',
                                 keep_difficult=keep_difficult)
 test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False,
                                           collate_fn=test_dataset.collate_fn, num_workers=workers, pin_memory=True)
+"""
 
+#With AVD dataset:
+
+#import active_vision_dataset_processing.data_loading
+import transforms, active_vision_dataset
+
+#Include all instances
+pick_trans = transforms.PickInstances(range(34))
+
+TRAIN_PATH = "./google_drive/MyDrive/ColabNotebooks/Project/testDataset"
+
+test_dataset = active_vision_dataset.AVD(root=TRAIN_PATH, train=True,
+                                    target_transform=pick_trans,
+                                    scene_list=['Home_001_2',                                                    
+                                                'Home_003_2',                                                   
+                                                'Home_004_2',
+                                                'Home_005_2',
+                                                'Home_013_1',
+                                                'Home_014_2',
+                                                'Home_015_1',
+                                                'Home_016_1'],
+                                      fraction_of_no_box=-1)
+  
+
+test_loader = torch.utils.data.DataLoader(test_dataset,
+                          batch_size=batch_size,
+                          shuffle=True,
+                          collate_fn=active_vision_dataset.collate
+                          )
 
 def evaluate(test_loader, model):
     """
@@ -52,29 +82,97 @@ def evaluate(test_loader, model):
 
     with torch.no_grad():
         # Batches
-        for i, (images, boxes, labels, difficulties) in enumerate(tqdm(test_loader, desc='Evaluating')):
-            images = images.to(device)  # (N, 3, 300, 300)
+        #for i, (images, boxes, labels, difficulties) in enumerate(tqdm(test_loader, desc='Evaluating')):
+        for i, (images, labels) in enumerate(tqdm(test_loader, desc='Evaluating')):
+        
+          #COPIED CODE  FROM TRAIN.PY
+          
+          #Pre-processing:        
+          from torchvision import transforms as transf
+          preprocess = transf.Compose([
+                        transf.ToPILImage(),
+                        transf.Resize(300),
+                        transf.CenterCrop(300),
+                        transf.ToTensor(),                      
+                        transf.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                    ])
+          
+          for j in range(batch_size):             
+            if j == 0:   
+              input_tensor = preprocess(images[j])
+              input_tensor = input_tensor.unsqueeze(0)
+              input_batch = input_tensor
+            else:
+              input_tensor = preprocess(images[j])
+              #print(input_tensor)
+              input_tensor = input_tensor.unsqueeze(0) # create a mini-batch as expected by the model
+              #print(input_tensor.shape)
+              input_batch = torch.cat((input_batch, input_tensor), 0)
+              #print("shape images: ",input_batch.shape) 
 
-            # Forward prop.
-            predicted_locs, predicted_scores = model(images)
 
-            # Detect objects in SSD output
-            det_boxes_batch, det_labels_batch, det_scores_batch = model.detect_objects(predicted_locs, predicted_scores,
-                                                                                       min_score=0.01, max_overlap=0.45,
-                                                                                       top_k=200)
-            # Evaluation MUST be at min_score=0.01, max_overlap=0.45, top_k=200 for fair comparision with the paper's results and other repos
+            # In the Active Vision Dataset we have this formatting:
+            # [xmin ymin xmax ymax instance_id difficulty]
 
-            # Store this batch's results for mAP calculation
-            boxes = [b.to(device) for b in boxes]
-            labels = [l.to(device) for l in labels]
-            difficulties = [d.to(device) for d in difficulties]
+            box_id_diff = [b for b in labels[j][0]]  
+          
+            box = [l[0:4] for l in box_id_diff]
 
-            det_boxes.extend(det_boxes_batch)
-            det_labels.extend(det_labels_batch)
-            det_scores.extend(det_scores_batch)
-            true_boxes.extend(boxes)
-            true_labels.extend(labels)
-            true_difficulties.extend(difficulties)
+            #Boundary coordinates as requested
+            for k in range(len(box)):  
+              box[k][0] = box[k][0]/1920.0
+              box[k][2] = box[k][2]/1920.0          
+              box[k][1] = box[k][1]/1080.0
+              box[k][3] = box[k][3]/1080.0 
+            
+            box_tensor = torch.FloatTensor(box).to(device)
+
+            if j == 0:            
+              box_list = [box_tensor]
+            else:
+              box_list.append(box_tensor)               
+
+            label = [l[4] for l in box_id_diff]
+            label_tensor = torch.LongTensor(label).to(device)
+            if j == 0: 
+              label_list = [label_tensor]
+            else:
+              label_list.append(label_tensor)        
+      
+            difficulty = [l[5] for l in box_id_diff]
+            difficulty_tensor = torch.LongTensor(difficulty).to(device)
+            if j == 0: 
+              difficulty_list = [difficulty_tensor]
+            else:
+              difficulty_list.append(difficulty_tensor)      
+          
+          images = input_batch.to(device)  # (batch_size (N), 3, 300, 300)
+          
+          boxes = box_list
+          labels = label_list
+          difficulties = difficulty_list
+
+
+          # Forward prop.
+          predicted_locs, predicted_scores = model(images)
+
+          # Detect objects in SSD output
+          det_boxes_batch, det_labels_batch, det_scores_batch = model.detect_objects(predicted_locs, predicted_scores,
+                                                                                      min_score=0.01, max_overlap=0.45,
+                                                                                      top_k=200)
+          # Evaluation MUST be at min_score=0.01, max_overlap=0.45, top_k=200 for fair comparision with the paper's results and other repos
+
+          # Store this batch's results for mAP calculation
+          #boxes = [b.to(device) for b in boxes]
+          #labels = [l.to(device) for l in labels]
+          difficulties = [d.to(device) for d in difficulties]
+
+          det_boxes.extend(det_boxes_batch)
+          det_labels.extend(det_labels_batch)
+          det_scores.extend(det_scores_batch)
+          true_boxes.extend(boxes)
+          true_labels.extend(labels)
+          true_difficulties.extend(difficulties)
 
         # Calculate mAP
         APs, mAP = calculate_mAP(det_boxes, det_labels, det_scores, true_boxes, true_labels, true_difficulties)
