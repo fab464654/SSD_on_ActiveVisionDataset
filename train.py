@@ -16,7 +16,7 @@ n_classes = len(label_map)  # number of different types of objects
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Learning parameters
-checkpoint = "google_drive/MyDrive/ColabNotebooks/Project/checkpoint_ssd300.pth_15.tar"  # path to model checkpoint, None if none
+checkpoint = "google_drive/MyDrive/checkpointsIeri/checkpoint_ssd300.pth.tar"  # path to model checkpoint, None if none
 batch_size = 9  # batch size
 iterations = 120000  # number of iterations to train
 workers = 4  # number of workers for loading data in the DataLoader
@@ -255,7 +255,7 @@ is the number of objects present in that particular image.
           else:
             box_list.append(box_tensor)               
 
-          label = [l[5] for l in box_id_diff]
+          label = [l[4] for l in box_id_diff]
           label_tensor = torch.LongTensor(label).to(device)
           if j == 0: 
             label_list = [label_tensor]
