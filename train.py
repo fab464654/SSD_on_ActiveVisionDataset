@@ -115,7 +115,6 @@ def main():
 
     # Epochs
     for epoch in range(start_epoch, epochs):
-        save_checkpoint(epoch, model, optimizer)
         
         # Decay learning rate at particular epochs
         if epoch in decay_lr_at:
