@@ -40,21 +40,22 @@ import transforms, active_vision_dataset
 #Include all instances
 pick_trans = transforms.PickInstances(range(34))
 
-TRAIN_PATH = "./google_drive/MyDrive/ColabNotebooks/Project/testDataset"
-
-test_dataset = active_vision_dataset.AVD(root=TRAIN_PATH, train=True,
-                                    target_transform=pick_trans,
-                                    scene_list=['Home_001_2',                                                    
+TEST_PATH = "./google_drive/MyDrive/ColabNotebooks/Project/testDataset"
+"""
+ scene_list=['Home_001_2',                                                    
                                                 'Home_003_2',                                                   
                                                 'Home_004_2',
                                                 'Home_005_2',
                                                 'Home_013_1',
                                                 'Home_014_2',
                                                 'Home_015_1',
-                                                'Home_016_1'],
+                                                'Home_016_1']
+"""
+test_dataset = active_vision_dataset.AVD(root=TEST_PATH,
+                                    target_transform=pick_trans,
+                                    scene_list=['Home_001_2'],
                                       fraction_of_no_box=-1)
   
-
 test_loader = torch.utils.data.DataLoader(test_dataset,
                           batch_size=batch_size,
                           shuffle=True,
@@ -83,10 +84,8 @@ def evaluate(test_loader, model):
     with torch.no_grad():
         # Batches
         #for i, (images, boxes, labels, difficulties) in enumerate(tqdm(test_loader, desc='Evaluating')):
-        for i, (images, labels) in enumerate(tqdm(test_loader, desc='Evaluating')):
-        
-          #COPIED CODE  FROM TRAIN.PY
-          
+        for i, (images, labels) in enumerate(tqdm(test_loader, desc='Evaluating')):          
+          #COPIED CODE  FROM TRAIN.PY    
           #Pre-processing:        
           from torchvision import transforms as transf
           preprocess = transf.Compose([
@@ -97,19 +96,29 @@ def evaluate(test_loader, model):
                         transf.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                     ])
           
+          #numImagesLastBatch = len(test_dataset) - batch_size*(18-1)  
+          #print(numImagesLastBatch)
+          numImagesLastBatch = -100
+          #print("len:", len(test_loader))
+          
+          if i == len(test_loader)-1:
+              numImagesLastBatch = len(test_dataset) - batch_size*(i)  
+              print("we_ ", numImagesLastBatch)
+
+
           for j in range(batch_size):             
             if j == 0:   
               input_tensor = preprocess(images[j])
               input_tensor = input_tensor.unsqueeze(0)
               input_batch = input_tensor
-            else:
+          
+            else:              
               input_tensor = preprocess(images[j])
               #print(input_tensor)
               input_tensor = input_tensor.unsqueeze(0) # create a mini-batch as expected by the model
               #print(input_tensor.shape)
               input_batch = torch.cat((input_batch, input_tensor), 0)
               #print("shape images: ",input_batch.shape) 
-
 
             # In the Active Vision Dataset we have this formatting:
             # [xmin ymin xmax ymax instance_id difficulty]
@@ -139,15 +148,29 @@ def evaluate(test_loader, model):
             else:
               label_list.append(label_tensor)        
       
+            #According to the code, difficulty is used to compute the mAP and should be
+            #zero (not diff.) or one (diff), while in AVD Dataset it's a number from 0 to 5            
             difficulty = [l[5] for l in box_id_diff]
+            for k in range(len(difficulty)):
+              if difficulty[k] >= 5:
+                difficulty[k] = 1
+              else:
+                difficulty[k] = 0
+
             difficulty_tensor = torch.LongTensor(difficulty).to(device)
             if j == 0: 
               difficulty_list = [difficulty_tensor]
             else:
               difficulty_list.append(difficulty_tensor)      
+
+            if j == numImagesLastBatch-1:
+              j = batch_size
+              break
           
+            
+          #endFor j
           images = input_batch.to(device)  # (batch_size (N), 3, 300, 300)
-          
+        
           boxes = box_list
           labels = label_list
           difficulties = difficulty_list
@@ -160,12 +183,16 @@ def evaluate(test_loader, model):
           det_boxes_batch, det_labels_batch, det_scores_batch = model.detect_objects(predicted_locs, predicted_scores,
                                                                                       min_score=0.01, max_overlap=0.45,
                                                                                       top_k=200)
+
+          #print(det_scores_batch)
           # Evaluation MUST be at min_score=0.01, max_overlap=0.45, top_k=200 for fair comparision with the paper's results and other repos
 
           # Store this batch's results for mAP calculation
           #boxes = [b.to(device) for b in boxes]
           #labels = [l.to(device) for l in labels]
           difficulties = [d.to(device) for d in difficulties]
+          
+          #print(difficulties) #Just to check
 
           det_boxes.extend(det_boxes_batch)
           det_labels.extend(det_labels_batch)
